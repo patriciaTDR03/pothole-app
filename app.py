@@ -16,7 +16,7 @@ if not os.path.exists(DATA_FILE):
 # Descarcă modelul din Google Drive
 import urllib.request
 
-model_url = "https://www.dropbox.com/scl/fi/qj4l4reqgzks2nlbihg67/best.pt?rlkey=995afthydlzjpdazrl9np23lr&st=0gsft0h4&dl=1"
+model_url = "https://dl.dropboxusercontent.com/scl/fi/qj4l4reqgzks2nlbihg67/best.pt?rlkey=995afthydlzjpdazrl9np23lr"
 model_path = "best.pt"
 
 if not os.path.exists(model_path):

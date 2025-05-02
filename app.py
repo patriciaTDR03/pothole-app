@@ -14,7 +14,7 @@ if not os.path.exists(DATA_FILE):
         json.dump([], f)
 
 # Descarcă modelul din Google Drive
-model_id = "1NdAXsMjzDqRjXbrttroN5_2LGUi9Vflj"
+model_id = "https://www.dropbox.com/scl/fi/qj4l4reqgzks2nlbihg67/best.pt?rlkey=995afthydlzjpdazrl9np23lr&st=0z2y4g09&dl=1"
 model_url = f"https://drive.google.com/uc?id={model_id}"
 model_path = "best.pt"
 

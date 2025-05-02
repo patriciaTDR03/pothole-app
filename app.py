@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
 import os, uuid, json, piexif
 import torch
-import urllib.request
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'static/uploads'
@@ -15,8 +14,9 @@ if not os.path.exists(DATA_FILE):
         json.dump([], f)
 
 # Descarcă modelul din Google Drive
-model_id = "https://www.dropbox.com/scl/fi/qj4l4reqgzks2nlbihg67/best.pt?rlkey=995afthydlzjpdazrl9np23lr&st=0z2y4g09&dl=1"
-model_url = f"https://drive.google.com/uc?id={model_id}"
+import urllib.request
+
+model_url = "https://www.dropbox.com/scl/fi/qj4l4reqgzks2nlbihg67/best.pt?rlkey=995afthydlzjpdazrl9np23lr&st=0gsft0h4&dl=1"
 model_path = "best.pt"
 
 if not os.path.exists(model_path):

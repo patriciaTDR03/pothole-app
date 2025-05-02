@@ -1,0 +1,6 @@
+flask
+gdown
+pillow
+piexif
+torch
+torchvision

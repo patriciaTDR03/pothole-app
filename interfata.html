@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Raportează o groapă</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        .container { padding: 20px; }
+        #map { height: 400px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🕳️ Raportează o groapă</h2>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="image" required>
+            <button type="submit">Trimite</button>
+        </form>
+        <h3>📍 Harta detecțiilor</h3>
+        <div id="map"></div>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([46.77, 23.59], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        fetch("/api/points").then(res => res.json()).then(data => {
+            data.forEach(d => {
+                if (!d.location.lat || !d.location.lon) return;
+                L.marker([d.location.lat, d.location.lon]).addTo(map)
+                    .bindPopup(`<b>Status:</b> ${d.status}<br><img src="/static/uploads/${d.filename}" width="150">`);
+            });
+        });
+    </script>
+</body>
+</html>

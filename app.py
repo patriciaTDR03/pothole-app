@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
-import os, uuid, json, piexif, gdown
+import os, uuid, json, piexif
 import torch
 import urllib.request
 

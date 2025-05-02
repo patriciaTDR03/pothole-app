@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
 import os, uuid, json, piexif, gdown
 import torch
+import urllib.request
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'static/uploads'
@@ -19,8 +20,8 @@ model_url = f"https://drive.google.com/uc?id={model_id}"
 model_path = "best.pt"
 
 if not os.path.exists(model_path):
-    print("📥 Se descarcă modelul YOLO...")
-    gdown.download(model_url, model_path, quiet=False)
+    print("📥 Se descarcă modelul YOLO din Dropbox...")
+    urllib.request.urlretrieve(model_url, model_path)
 
 # Încarcă modelul YOLOv5
 model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)

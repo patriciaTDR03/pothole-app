@@ -1,4 +1,3 @@
-# app.py (versiune cu verificare EXIF corectă)
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
 import os, uuid, json, piexif, urllib.request
@@ -16,7 +15,6 @@ if not os.path.exists(DATA_FILE):
 
 # Modelul e în standby, nu se descarcă automat
 model_path = "best.pt"
-
 if os.path.exists(model_path):
     print("✅ Modelul YOLO este prezent local.")
     model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
@@ -24,7 +22,7 @@ else:
     print("⚠️  Modelul best.pt nu este disponibil. Detecția va fi sărită.")
     model = None
 
-# Extrage coordonatele GPS din EXIF (versiune stabilă)
+# Extrage coordonatele GPS din EXIF
 def get_gps_from_image(img_path):
     try:
         exif_dict = piexif.load(img_path)
@@ -36,17 +34,14 @@ def get_gps_from_image(img_path):
             lon_deg = lon[0][0] / lon[0][1] + lon[1][0] / lon[1][1] / 60 + lon[2][0] / lon[2][1] / 3600
             if gps.get(1) == b'S': lat_deg *= -1
             if gps.get(3) == b'W': lon_deg *= -1
-            print(f"📍 Coordonate extrase: {lat_deg}, {lon_deg}")
             return lat_deg, lon_deg
     except Exception as e:
         print("❌ Eroare la citirea EXIF:", e)
     return None, None
 
-# Verificare locație în Cluj
 def is_in_cluj(lat, lon):
     return lat and lon and (46.5 <= lat <= 47.1) and (23.4 <= lon <= 23.8)
 
-# Salvare detecție
 def save_detection(entry):
     with open(DATA_FILE, 'r+') as f:
         data = json.load(f)
@@ -54,7 +49,6 @@ def save_detection(entry):
         f.seek(0)
         json.dump(data, f, indent=2)
 
-# Ștergere detecție
 def delete_detection(id):
     with open(DATA_FILE, 'r+') as f:
         data = json.load(f)
@@ -79,7 +73,7 @@ def upload():
         lat, lon = get_gps_from_image(filepath)
         if not is_in_cluj(lat, lon):
             os.remove(filepath)
-            return "📍 Locația nu este în municipiul Cluj-Napoca. Detecția a fost ignorată.", 400
+            return render_template("not_in_cluj.html"), 400
 
         if not model:
             return "⚠️ Modelul nu este încă disponibil. Încarcă-l manual."

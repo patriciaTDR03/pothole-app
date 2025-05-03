@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
 import os, uuid, json, piexif
-import torch
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'static/uploads'
@@ -13,20 +12,13 @@ if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as f:
         json.dump([], f)
 
-# Descarcă modelul din Google Drive
-import urllib.request
-
-model_url = "https://dl.dropboxusercontent.com/scl/fi/qj4l4reqgzks2nlbihg67/best.pt?rlkey=995afthydlzjpdazrl9np23lr"
-model_path = "best.pt"
-
-if not os.path.exists(model_path):
-    print("📥 Se descarcă modelul YOLO din Dropbox...")
-    urllib.request.urlretrieve(model_url, model_path)
-
-# Încarcă modelul YOLOv5
-model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
-
-# Extragere GPS din EXIF
+# 🔧 Modelul este în standby – testare fără încărcare din Google Drive/Dropbox
+# model_url = "https://..."  # Linkul tău direct
+# model_path = "best.pt"
+# if not os.path.exists(model_path):
+#     print("📥 Se descarcă modelul YOLO...")
+#     urllib.request.urlretrieve(model_url, model_path)
+# model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
 
 def get_gps_from_image(img_path):
     try:
@@ -44,12 +36,8 @@ def get_gps_from_image(img_path):
         pass
     return None, None
 
-# Verificare locație în Cluj
-
 def is_in_cluj(lat, lon):
     return lat and lon and (46.5 <= lat <= 47.1) and (23.4 <= lon <= 23.8)
-
-# Salvare detecție
 
 def save_detection(entry):
     with open(DATA_FILE, 'r+') as f:
@@ -57,8 +45,6 @@ def save_detection(entry):
         data.append(entry)
         f.seek(0)
         json.dump(data, f, indent=2)
-
-# Ștergere detecție
 
 def delete_detection(id):
     with open(DATA_FILE, 'r+') as f:
@@ -68,7 +54,6 @@ def delete_detection(id):
         f.truncate()
         json.dump(data, f, indent=2)
 
-# Pagina principală
 @app.route("/", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
@@ -87,11 +72,12 @@ def upload():
             os.remove(filepath)
             return "📍 Locația nu este în municipiul Cluj-Napoca. Detecția a fost ignorată.", 400
 
-        results = model(filepath)
-        labels = results.pandas().xyxy[0]['name'].tolist()
-
-        if 'pothole' not in labels:
-            return "✅ Imagine încărcată, dar nu s-au detectat gropi.", 200
+        # 🔧 Model dezactivat
+        print("🔧 Modelul YOLO este în standby – aplicația a funcționat până aici.")
+        # results = model(filepath)
+        # labels = results.pandas().xyxy[0]['name'].tolist()
+        # if 'pothole' not in labels:
+        #     return "✅ Imagine încărcată, dar nu s-au detectat gropi.", 200
 
         detection = {
             "id": uuid.uuid4().hex,
@@ -100,27 +86,23 @@ def upload():
             "status": "pending"
         }
         save_detection(detection)
-        return "✅ Groapă detectată și salvată cu succes.", 200
+        return "✅ Imagine salvată (fără model activat).", 200
 
     return render_template("interfata.html")
 
-# Pagina admin
 @app.route("/admin")
 def admin():
     return render_template("admin.html")
 
-# Puncte pentru hartă
 @app.route("/api/points")
 def api_points():
     with open(DATA_FILE) as f:
         return jsonify(json.load(f))
 
-# Șterge punct
 @app.route("/api/delete/<id>", methods=["POST"])
 def delete_point(id):
     delete_detection(id)
     return jsonify(success=True)
 
-# Pornire aplicație
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

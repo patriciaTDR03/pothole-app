@@ -73,7 +73,7 @@ def upload():
         lat, lon = get_gps_from_image(filepath)
         if not is_in_cluj(lat, lon):
             os.remove(filepath)
-            return render_template("not_in_cluj.html"), 400
+            return render_template("not_in.html"), 400
 
         if not model:
             return "⚠️ Modelul nu este încă disponibil. Încarcă-l manual."

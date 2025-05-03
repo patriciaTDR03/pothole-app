@@ -1,6 +1,8 @@
+# app.py (versiune cu verificare EXIF corectă)
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
-import os, uuid, json, piexif
+import os, uuid, json, piexif, urllib.request
+import torch
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'static/uploads'
@@ -12,33 +14,39 @@ if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as f:
         json.dump([], f)
 
-# 🔧 Modelul este în standby – testare fără încărcare din Google Drive/Dropbox
-# model_url = "https://..."  # Linkul tău direct
-# model_path = "best.pt"
-# if not os.path.exists(model_path):
-#     print("📥 Se descarcă modelul YOLO...")
-#     urllib.request.urlretrieve(model_url, model_path)
-# model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
+# Modelul e în standby, nu se descarcă automat
+model_path = "best.pt"
 
+if os.path.exists(model_path):
+    print("✅ Modelul YOLO este prezent local.")
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
+else:
+    print("⚠️  Modelul best.pt nu este disponibil. Detecția va fi sărită.")
+    model = None
+
+# Extrage coordonatele GPS din EXIF (versiune stabilă)
 def get_gps_from_image(img_path):
     try:
         exif_dict = piexif.load(img_path)
         gps = exif_dict.get("GPS")
-        if gps:
+        if gps and 2 in gps and 4 in gps:
             lat = gps[2]
             lon = gps[4]
-            lat_deg = lat[0][0] / lat[0][1] + lat[1][0] / lat[1][1] / 60 + lat[2][0][0] / lat[2][0][1] / 3600
-            lon_deg = lon[0][0] / lon[0][1] + lon[1][0] / lon[1][1] / 60 + lon[2][0][0] / lon[2][0][1] / 3600
-            if gps[1] == b'S': lat_deg *= -1
-            if gps[3] == b'W': lon_deg *= -1
+            lat_deg = lat[0][0] / lat[0][1] + lat[1][0] / lat[1][1] / 60 + lat[2][0] / lat[2][1] / 3600
+            lon_deg = lon[0][0] / lon[0][1] + lon[1][0] / lon[1][1] / 60 + lon[2][0] / lon[2][1] / 3600
+            if gps.get(1) == b'S': lat_deg *= -1
+            if gps.get(3) == b'W': lon_deg *= -1
+            print(f"📍 Coordonate extrase: {lat_deg}, {lon_deg}")
             return lat_deg, lon_deg
-    except:
-        pass
+    except Exception as e:
+        print("❌ Eroare la citirea EXIF:", e)
     return None, None
 
+# Verificare locație în Cluj
 def is_in_cluj(lat, lon):
     return lat and lon and (46.5 <= lat <= 47.1) and (23.4 <= lon <= 23.8)
 
+# Salvare detecție
 def save_detection(entry):
     with open(DATA_FILE, 'r+') as f:
         data = json.load(f)
@@ -46,6 +54,7 @@ def save_detection(entry):
         f.seek(0)
         json.dump(data, f, indent=2)
 
+# Ștergere detecție
 def delete_detection(id):
     with open(DATA_FILE, 'r+') as f:
         data = json.load(f)
@@ -72,12 +81,14 @@ def upload():
             os.remove(filepath)
             return "📍 Locația nu este în municipiul Cluj-Napoca. Detecția a fost ignorată.", 400
 
-        # 🔧 Model dezactivat
-        print("🔧 Modelul YOLO este în standby – aplicația a funcționat până aici.")
-        # results = model(filepath)
-        # labels = results.pandas().xyxy[0]['name'].tolist()
-        # if 'pothole' not in labels:
-        #     return "✅ Imagine încărcată, dar nu s-au detectat gropi.", 200
+        if not model:
+            return "⚠️ Modelul nu este încă disponibil. Încarcă-l manual."
+
+        results = model(filepath)
+        labels = results.pandas().xyxy[0]['name'].tolist()
+
+        if 'pothole' not in labels:
+            return "✅ Imagine încărcată, dar nu s-au detectat gropi.", 200
 
         detection = {
             "id": uuid.uuid4().hex,
@@ -86,7 +97,7 @@ def upload():
             "status": "pending"
         }
         save_detection(detection)
-        return "✅ Imagine salvată (fără model activat).", 200
+        return "✅ Groapă detectată și salvată cu succes.", 200
 
     return render_template("interfata.html")
 

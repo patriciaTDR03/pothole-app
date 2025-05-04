@@ -3,4 +3,3 @@ pillow
 piexif
 torch
 torchvision
-gdown

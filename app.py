@@ -14,24 +14,14 @@ if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as f:
         json.dump([], f)
 
-# Modelul YOLO se încarcă din Google Drive cu gdown dacă nu există local
+# Modelul YOLO 
 model_path = "best.pt"
-gdrive_url = "https://drive.google.com/uc?id=1NdAXsMjzDqRjXbrttroN5_2LGUi9Vflj"
-
-if not os.path.exists(model_path):
-    print("⬇️ Modelul best.pt nu este local. Încerc să-l descarc din Google Drive...")
-    try:
-        import gdown
-        gdown.download(gdrive_url, model_path, quiet=False)
-        print("✅ Modelul a fost descărcat.")
-    except Exception as e:
-        print("❌ Eroare la descărcarea modelului:", e)
 
 if os.path.exists(model_path):
-    print("✅ Modelul YOLO este prezent.")
+    print("✅ Modelul YOLO este prezent în proiect.")
     model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
 else:
-    print("⚠️  Modelul best.pt nu este disponibil. Detecția va fi sărită.")
+    print("⚠️ Modelul best.pt nu este găsit local.")
     model = None
 
 # Extrage coordonatele GPS din EXIF

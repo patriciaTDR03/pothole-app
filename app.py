@@ -1,4 +1,4 @@
-# app.py (versiune cu salvare EXIF intact și debugging GPS)
+# app.py (versiune cu salvare EXIF intact, debugging GPS și model din Dropbox)
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
 import os, uuid, json, piexif, urllib.request
@@ -14,10 +14,20 @@ if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as f:
         json.dump([], f)
 
-# Modelul e în standby, nu se descarcă automat
+# Modelul YOLO se încarcă din Dropbox dacă nu există local
 model_path = "best.pt"
+dropbox_url = "https://www.dropbox.com/scl/fi/20ure3jaiajw4o55gc3lr/best.pt?rlkey=x9vtmfkc7qgacu3vmw67myjae&st=0wfa87pz&dl=1"
+
+if not os.path.exists(model_path):
+    print("⬇️ Modelul best.pt nu este local. Încerc să-l descarc din Dropbox...")
+    try:
+        urllib.request.urlretrieve(dropbox_url, model_path)
+        print("✅ Modelul a fost descărcat.")
+    except Exception as e:
+        print("❌ Eroare la descărcarea modelului:", e)
+
 if os.path.exists(model_path):
-    print("✅ Modelul YOLO este prezent local.")
+    print("✅ Modelul YOLO este prezent.")
     model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
 else:
     print("⚠️  Modelul best.pt nu este disponibil. Detecția va fi sărită.")

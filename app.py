@@ -1,7 +1,7 @@
-# app.py (versiune cu salvare EXIF intact, debugging GPS și model din Dropbox)
+# app.py (versiune cu salvare EXIF intact, debugging GPS și model din Google Drive via gdown)
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
-import os, uuid, json, piexif, urllib.request
+import os, uuid, json, piexif
 import torch
 
 app = Flask(__name__)
@@ -14,14 +14,15 @@ if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as f:
         json.dump([], f)
 
-# Modelul YOLO se încarcă din Dropbox dacă nu există local
+# Modelul YOLO se încarcă din Google Drive cu gdown dacă nu există local
 model_path = "best.pt"
-dropbox_url = "https://www.dropbox.com/scl/fi/20ure3jaiajw4o55gc3lr/best.pt?rlkey=x9vtmfkc7qgacu3vmw67myjae&st=0wfa87pz&dl=1"
+gdrive_url = "https://drive.google.com/uc?id=1NdAXsMjzDqRjXbrttroN5_2LGUi9Vflj"
 
 if not os.path.exists(model_path):
-    print("⬇️ Modelul best.pt nu este local. Încerc să-l descarc din Dropbox...")
+    print("⬇️ Modelul best.pt nu este local. Încerc să-l descarc din Google Drive...")
     try:
-        urllib.request.urlretrieve(dropbox_url, model_path)
+        import gdown
+        gdown.download(gdrive_url, model_path, quiet=False)
         print("✅ Modelul a fost descărcat.")
     except Exception as e:
         print("❌ Eroare la descărcarea modelului:", e)
@@ -131,3 +132,4 @@ def delete_point(id):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+

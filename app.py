@@ -1,4 +1,4 @@
-# app.py (versiune cu salvare EXIF intact, debugging GPS și model din Google Drive via gdown)
+# app.py (versiune curată — model din GitHub direct)
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
 import os, uuid, json, piexif
@@ -14,14 +14,13 @@ if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as f:
         json.dump([], f)
 
-# Modelul YOLO 
+# Încarcă modelul YOLO din fișier local (inclus în GitHub)
 model_path = "best.pt"
-
 if os.path.exists(model_path):
-    print("✅ Modelul YOLO este prezent în proiect.")
+    print("✅ Modelul YOLO este prezent.")
     model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
 else:
-    print("⚠️ Modelul best.pt nu este găsit local.")
+    print("⚠️  Modelul best.pt nu este disponibil. Detecția va fi sărită.")
     model = None
 
 # Extrage coordonatele GPS din EXIF
@@ -122,4 +121,3 @@ def delete_point(id):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-

@@ -1,3 +1,4 @@
+# app.py (versiune cu salvare EXIF intact și debugging GPS)
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
 import os, uuid, json, piexif, urllib.request
@@ -23,6 +24,7 @@ else:
     model = None
 
 # Extrage coordonatele GPS din EXIF
+
 def get_gps_from_image(img_path):
     try:
         exif_dict = piexif.load(img_path)
@@ -38,7 +40,6 @@ def get_gps_from_image(img_path):
             if gps.get(1) == b'S': lat_deg *= -1
             if gps.get(3) == b'W': lon_deg *= -1
 
-            # 🧭 Afișăm rezultatul
             print(f"📍 Coordonate extrase: {lat_deg}, {lon_deg}")
             return lat_deg, lon_deg
         else:
@@ -47,7 +48,6 @@ def get_gps_from_image(img_path):
         print("❌ Eroare la citirea EXIF:", e)
 
     return None, None
-
 
 def is_in_cluj(lat, lon):
     return lat and lon and (46.5 <= lat <= 47.1) and (23.4 <= lon <= 23.8)
@@ -77,8 +77,8 @@ def upload():
         filename = f"{uuid.uuid4().hex}.jpg"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
 
-        img = Image.open(file).convert('RGB')
-        img.save(filepath, format='JPEG')
+        # Salvare directă a fișierului, păstrând metadatele
+        file.save(filepath)
 
         lat, lon = get_gps_from_image(filepath)
         if not is_in_cluj(lat, lon):

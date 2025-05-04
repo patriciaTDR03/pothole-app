@@ -27,6 +27,9 @@ def get_gps_from_image(img_path):
     try:
         exif_dict = piexif.load(img_path)
         gps = exif_dict.get("GPS")
+        print("=== DEBUG: GPS RAW ===")
+        print(gps)
+
         if gps and 2 in gps and 4 in gps:
             lat = gps[2]
             lon = gps[4]
@@ -34,10 +37,17 @@ def get_gps_from_image(img_path):
             lon_deg = lon[0][0] / lon[0][1] + lon[1][0] / lon[1][1] / 60 + lon[2][0] / lon[2][1] / 3600
             if gps.get(1) == b'S': lat_deg *= -1
             if gps.get(3) == b'W': lon_deg *= -1
+
+            # 🧭 Afișăm rezultatul
+            print(f"📍 Coordonate extrase: {lat_deg}, {lon_deg}")
             return lat_deg, lon_deg
+        else:
+            print("⚠️ Nu s-au găsit coordonate GPS în EXIF.")
     except Exception as e:
         print("❌ Eroare la citirea EXIF:", e)
+
     return None, None
+
 
 def is_in_cluj(lat, lon):
     return lat and lon and (46.5 <= lat <= 47.1) and (23.4 <= lon <= 23.8)

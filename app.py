@@ -1,23 +1,24 @@
 # app.py (versiune actualizată - interacțiune Colab pentru detecție)
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
-import os, uuid, json, piexif
-import requests
+import os, uuid, json, piexif, requests
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'static/uploads'
 DATA_FILE = 'data/detections.json'
+# Asigurăm directorii necesari
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs('data', exist_ok=True)
 
+# Inițializăm fișierul de date dacă nu există
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as f:
         json.dump([], f)
 
 # URL-ul serverului Colab pentru detecție
-COLAB_URL = 'https://7db3-35-196-96-183.ngrok-free.app'
+COLAB_URL = 'https://7db3-35-196-96-183.ngrok-free.app/detect'
 
-# Funcție pentru extragerea coordonatelor GPS din EXIF
+# Extrage coordonatele GPS din EXIF
 
 def get_gps_from_image(img_path):
     try:
@@ -35,18 +36,35 @@ def get_gps_from_image(img_path):
         print(f"Eroare EXIF: {e}")
     return None, None
 
-
-# Funcție pentru verificarea coordonatelor Cluj
+# Verifică dacă coordonatele sunt în zona Cluj
 
 def is_in_cluj(lat, lon):
     return lat and lon and (46.5 <= lat <= 47.1) and (23.4 <= lon <= 23.8)
 
+# Salvează o detecție în fișierul JSON
 
-# Endpoint principal pentru upload și detecție
+def save_detection(entry):
+    with open(DATA_FILE, 'r+') as f:
+        data = json.load(f)
+        data.append(entry)
+        f.seek(0)
+        json.dump(data, f, indent=2)
 
-@app.route("/", methods=["GET", "POST"])
+# Șterge o detecție după id
+
+def delete_detection(id):
+    with open(DATA_FILE, 'r+') as f:
+        data = json.load(f)
+        data = [d for d in data if d['id'] != id]
+        f.seek(0)
+        f.truncate()
+        json.dump(data, f, indent=2)
+
+# Ruta principală pentru upload și trimitere spre Colab
+
+@app.route('/', methods=['GET', 'POST'])
 def upload():
-    if request.method == "POST":
+    if request.method == 'POST':
         file = request.files.get('image')
         if not file:
             return "Nu ai încărcat nicio imagine.", 400
@@ -58,44 +76,50 @@ def upload():
         lat, lon = get_gps_from_image(filepath)
         if not is_in_cluj(lat, lon):
             os.remove(filepath)
-            return render_template("not_in.html"), 400
+            return render_template('not_in.html'), 400
 
-        # Trimitere către Colab pentru detecție
+        # Trimitere către serverul Colab
         try:
             with open(filepath, 'rb') as img_file:
-                response = requests.post(COLAB_URL, files={'image': img_file})
-                result = response.json()
+                resp = requests.post(COLAB_URL, files={'image': img_file})
+                result = resp.json()
 
-            if result.get("status") == "success":
-                detection = {
-                    "id": uuid.uuid4().hex,
-                    "filename": filename,
-                    "location": {"lat": lat, "lon": lon},
-                    "status": "pending"
+            if result.get('status') == 'success' and 'Groapă detectată' in result.get('message', ''):
+                entry = {
+                    'id': uuid.uuid4().hex,
+                    'filename': filename,
+                    'location': {'lat': lat, 'lon': lon},
+                    'status': 'pending'
                 }
-                save_detection(detection)
-                return "✅ Groapă detectată și salvată cu succes.", 200
+                save_detection(entry)
+                return '✅ Groapă detectată și salvată cu succes.', 200
             else:
-                return result.get("message", "Eroare la detecție."), 500
+                return result.get('message', 'Eroare la detecție.'), 200
         except Exception as e:
             print(f"Eroare la cererea către Colab: {e}")
             return "Eroare la cererea către serverul Colab.", 500
 
-    return render_template("interfata.html")
+    return render_template('interfata.html')
 
-@app.route("/admin")
+# Pagina de administrare
+
+@app.route('/admin')
 def admin():
-    return render_template("admin.html")
+    return render_template('admin.html')
 
-@app.route("/api/points")
+# API pentru preluarea punctelor detectate
+
+@app.route('/api/points')
 def api_points():
     with open(DATA_FILE) as f:
         return jsonify(json.load(f))
 
-@app.route("/api/delete/<id>", methods=["POST"])
+# API pentru ștergerea unui punct
+
+@app.route('/api/delete/<id>', methods=['POST'])
 def delete_point(id):
     delete_detection(id)
     return jsonify(success=True)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

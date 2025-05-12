@@ -3,3 +3,4 @@ pillow
 piexif
 torch
 torchvision
+requests

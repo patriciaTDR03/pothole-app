@@ -15,7 +15,7 @@ if not os.path.exists(DATA_FILE):
         json.dump([], f)
 
 # URL-ul serverului Colab pentru detecție
-COLAB_URL = 'http://127.0.0.1:5000/'
+COLAB_URL = 'https://7db3-35-196-96-183.ngrok-free.app'
 
 # Funcție pentru extragerea coordonatelor GPS din EXIF
 

@@ -1,20 +1,22 @@
-# app.py (versiune finală cu pagină „not detected”)
+# app.py (versiune finală cu pagină „not detected” și reverse-geocoding în toate endpoint-urile)
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 from flask import Flask, render_template, request, jsonify
 from PIL import Image
 import os, uuid, json, piexif, requests
-# după tema app = Flask(__name__)
-geolocator = Nominatim(user_agent="pothole_app")
-# ca să nu blocăm solicitările la Nominatim:
-reverse = RateLimiter(geolocator.reverse, min_delay_seconds=1)
 
 app = Flask(__name__)
+
+# Configurări
 UPLOAD_FOLDER = 'static/uploads'
 DATA_FILE = 'data/detections.json'
 COLAB_URL = 'https://865b-35-247-42-51.ngrok-free.app/detect'
 
-# Asigurăm directorii și fișierul de date
+# Geopy setup
+geolocator = Nominatim(user_agent="pothole_app")
+reverse = RateLimiter(geolocator.reverse, min_delay_seconds=1)
+
+# Asigurăm directoarele și fișierul JSON
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs('data', exist_ok=True)
 if not os.path.exists(DATA_FILE):
@@ -22,7 +24,6 @@ if not os.path.exists(DATA_FILE):
         json.dump([], f)
 
 # Funcții auxiliare
-
 def get_gps_from_image(img_path):
     try:
         exif_dict = piexif.load(img_path)
@@ -112,14 +113,17 @@ def upload():
     # GET → afișăm pagina principală cu formularul și harta
     return render_template('interfata.html')
 
-# Pagina de admin
+# Pagina de admin (fără reverse-geocoding aici, folosim în API)
 @app.route('/admin')
 def admin():
-    # încărcăm toate detecțiile
+    return render_template('admin.html')
+
+# API pentru punctele de pe hartă (include address)
+@app.route('/api/points')
+def api_points():
     with open(DATA_FILE) as f:
         data = json.load(f)
 
-    # pentru fiecare entry, adăugăm câmpul 'address'
     for entry in data:
         lat = entry['location']['lat']
         lon = entry['location']['lon']
@@ -130,30 +134,7 @@ def admin():
             app.logger.error(f"Reverse geocoding error pentru {lat},{lon}: {e}")
             entry['address'] = "Eroare la obținerea adresei"
 
-    return render_template('admin.html', detections=data)
-
-# API pentru punctele de pe hartă
- @app.route('/api/points')
--def api_points():
--    with open(DATA_FILE) as f:
--        return jsonify(json.load(f))
-+def api_points():
-+    with open(DATA_FILE) as f:
-+        data = json.load(f)
-+
-+    # pentru fiecare entry, atașăm adresa text
-+    for entry in data:
-+        lat = entry['location']['lat']
-+        lon = entry['location']['lon']
-+        try:
-+            loc = reverse((lat, lon), exactly_one=True)
-+            entry['address'] = loc.address if loc else "Adresă necunoscută"
-+        except Exception as e:
-+            app.logger.error(f"Reverse geocoding error pentru {lat},{lon}: {e}")
-+            entry['address'] = "Eroare la obținerea adresei"
-+
-+    return jsonify(data)
-
+    return jsonify(data)
 
 # Ștergere punct
 @app.route('/api/delete/<id>', methods=['POST'])

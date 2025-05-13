@@ -1,0 +1,60 @@
+# Colab Detection Server - versiune YOLOv8
+
+# Instalează dependențele (rulează o dată în Colab)
+!pip install ultralytics flask-ngrok flask pillow piexif requests
+
+# Codul serverului
+from flask import Flask, request, jsonify
+from pyngrok import ngrok
+from ultralytics import YOLO
+import os
+
+# Inițializăm aplicația Flask
+app = Flask(__name__)
+
+# Calea către modelul YOLOv8
+MODEL_PATH = 'yolov5s.pt'  # asigură-te că fișierul e încărcat în Colab
+
+# Încarcă modelul YOLOv8
+print("📦 Încărcare model YOLOv8...")
+try:
+    model = YOLO(MODEL_PATH)
+    print("✅ Model YOLOv8 încărcat cu succes.")
+except Exception as e:
+    print(f"❌ Eroare la încărcarea modelului: {e}")
+    model = None
+
+# Endpoint pentru detecție
+@app.route('/detect', methods=['POST'])
+def detect():
+    if 'image' not in request.files:
+        return jsonify({'status': 'error', 'message': 'Imagine lipsă.'}), 400
+
+    file = request.files['image']
+    img_path = os.path.join('/tmp', file.filename)
+    file.save(img_path)
+
+    try:
+        # Rulare predicție YOLOv8
+        results = model.predict(source=img_path, verbose=False)[0]
+        # Extrage etichetele detectate
+        labels = [model.names[int(c)] for c in results.boxes.cls]
+
+        message = 'Nu s-au detectat gropi.'
+        status = 'success'
+        if 'pothole' in labels:
+            message = 'Groapă detectată.'
+
+        return jsonify({'status': status, 'message': message}), 200
+
+    except Exception as e:
+        print(f"❌ Eroare la detecție: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# Pornire server cu ngrok
+if __name__ == '__main__':
+    # Autentifică ngrok (înlocuiește cu token-ul tău)
+    ngrok.set_auth_token('Autothoken')
+    public_url = ngrok.connect(5000)
+    print(f"🔗 Server public la: {public_url}")
+    app.run(port=5000)

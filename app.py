@@ -64,12 +64,10 @@ def upload():
         if not file:
             return 'Nu ai încărcat nicio imagine.', 400
 
-        # Salvăm fișierul
         filename = f"{uuid.uuid4().hex}.jpg"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
-        # Extragem coordonatele EXIF
         lat, lon = get_gps_from_image(filepath)
         if not is_in_cluj(lat, lon):
             os.remove(filepath)
@@ -77,7 +75,6 @@ def upload():
 
         app.logger.info(f'Primit imagine: {filename} cu lat={lat}, lon={lon}')
 
-        # Apel către serverul de detecție (Colab)
         try:
             with open(filepath, 'rb') as img_file:
                 resp = requests.post(COLAB_URL, files={'image': img_file}, timeout=15)
@@ -88,7 +85,6 @@ def upload():
             result = resp.json()
             app.logger.info(f'Colab JSON: {result}')
 
-            # Dacă modelul detectează groapă
             if result.get('status') == 'success' and result.get('message') == 'Groapă detectată.':
                 entry = {
                     'id': uuid.uuid4().hex,
@@ -99,7 +95,7 @@ def upload():
                 save_detection(entry)
                 return '✅ Groapă detectată și salvată cu succes.', 200
 
-            # Dacă nu se detectează groapă → pagină frumoasă de notificare
+            # dacă nu detectează
             return render_template(
                 'not_detected.html',
                 filename=filename,
@@ -117,7 +113,6 @@ def upload():
             app.logger.error(f'Eroare neașteptată în upload: {e}')
             return render_template('error.html', message=str(e)), 500
 
-    # GET → afișăm pagina principală cu formularul și harta
     return render_template('interfata.html')
 
 # Ruta pentru forțare pin dummy
@@ -158,7 +153,8 @@ def api_points():
 
     return jsonify(data)
 
-# Ruta pentru ștergere punct\ n@app.route('/api/delete/<id>', methods=['POST'])
+# Ruta pentru ștergere punct
+@app.route('/api/delete/<id>', methods=['POST'])
 def delete_point(id):
     delete_detection(id)
     return jsonify(success=True)

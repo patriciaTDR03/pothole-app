@@ -9,7 +9,7 @@ app = Flask(__name__)
 # Configurări
 UPLOAD_FOLDER = 'static/uploads'
 DATA_FILE = 'data/detections.json'
-COLAB_URL = 'https://865b-35-247-42-51.ngrok-free.app/detect'
+COLAB_URL = 'https://6202-35-247-42-51.ngrok-free.app/detect'
 
 # Geopy setup
 geolocator = Nominatim(user_agent="pothole_app")

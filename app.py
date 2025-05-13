@@ -111,7 +111,29 @@ def upload():
             app.logger.error(f'Eroare la cererea către Colab: {e}')
             return '❌ Eroare internă în comunicarea cu serverul de detecție.', 502
 
-    return render_template('interfata.html')
+def upload():
+-            else:
+-                # Fallback dummy detection
+-                entry = {
+-                    'id': uuid.uuid4().hex,
+-                    'filename': filename,
+-                    'location': {'lat': lat, 'lon': lon},
+-                    'status': 'dummy'
+-                }
+-                save_detection(entry)
+-                return '⚠️ Nu s-a detectat groapă, dar am adăugat un pin dummy pentru test.', 200
++            else:
++                # Nu s-a detectat nicio groapă → afișăm pagina de notificare
++                # (opțional poți păstra și salvarea dummy dacă vrei pin pe hartă)
++                # entry = {
++                #     'id': uuid.uuid4().hex,
++                #     'filename': filename,
++                #     'location': {'lat': lat, 'lon': lon},
++                #     'status': 'dummy'
++                # }
++                # save_detection(entry)
++                return render_template('not_detected.html'), 200
+
 
 # Admin și API
 @app.route('/admin')

@@ -1,7 +1,6 @@
-# app.py (versiune finală cu pagină „not detected” și reverse-geocoding în toate endpoint-urile)
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from PIL import Image
 import os, uuid, json, piexif, requests
 
@@ -101,24 +100,47 @@ def upload():
                 return '✅ Groapă detectată și salvată cu succes.', 200
 
             # Dacă nu se detectează groapă → pagină frumoasă de notificare
-            return render_template('not_detected.html'), 200
+            return render_template(
+                'not_detected.html',
+                filename=filename,
+                lat=lat,
+                lon=lon
+            ), 200
 
         except requests.Timeout:
             app.logger.error('Timeout la cererea către Colab')
-            return '⏰ Timeout la serverul de detecție.', 504
+            return render_template('error.html', message="Timeout la serverul de detecție."), 504
+        except requests.RequestException as e:
+            app.logger.error(f'Requests error către Colab: {e}')
+            return render_template('error.html', message=str(e)), 502
         except Exception as e:
-            app.logger.error(f'Eroare la cererea către Colab: {e}')
-            return '❌ Eroare internă în comunicarea cu serverul de detecție.', 502
+            app.logger.error(f'Eroare neașteptată în upload: {e}')
+            return render_template('error.html', message=str(e)), 500
 
     # GET → afișăm pagina principală cu formularul și harta
     return render_template('interfata.html')
 
-# Pagina de admin (fără reverse-geocoding aici, folosim în API)
+# Ruta pentru forțare pin dummy
+@app.route('/force_dummy', methods=['POST'])
+def force_dummy():
+    filename = request.form.get('filename')
+    lat = float(request.form.get('lat'))
+    lon = float(request.form.get('lon'))
+    entry = {
+        'id': uuid.uuid4().hex,
+        'filename': filename,
+        'location': {'lat': lat, 'lon': lon},
+        'status': 'dummy'
+    }
+    save_detection(entry)
+    return redirect(url_for('upload'))
+
+# Pagina de admin
 @app.route('/admin')
 def admin():
     return render_template('admin.html')
 
-# API pentru punctele de pe hartă (include address)
+# API pentru punctele de pe hartă (include adresa)
 @app.route('/api/points')
 def api_points():
     with open(DATA_FILE) as f:
@@ -136,8 +158,7 @@ def api_points():
 
     return jsonify(data)
 
-# Ștergere punct
-@app.route('/api/delete/<id>', methods=['POST'])
+# Ruta pentru ștergere punct\ n@app.route('/api/delete/<id>', methods=['POST'])
 def delete_point(id):
     delete_detection(id)
     return jsonify(success=True)

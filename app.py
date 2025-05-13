@@ -133,10 +133,27 @@ def admin():
     return render_template('admin.html', detections=data)
 
 # API pentru punctele de pe hartă
-@app.route('/api/points')
-def api_points():
-    with open(DATA_FILE) as f:
-        return jsonify(json.load(f))
+ @app.route('/api/points')
+-def api_points():
+-    with open(DATA_FILE) as f:
+-        return jsonify(json.load(f))
++def api_points():
++    with open(DATA_FILE) as f:
++        data = json.load(f)
++
++    # pentru fiecare entry, atașăm adresa text
++    for entry in data:
++        lat = entry['location']['lat']
++        lon = entry['location']['lon']
++        try:
++            loc = reverse((lat, lon), exactly_one=True)
++            entry['address'] = loc.address if loc else "Adresă necunoscută"
++        except Exception as e:
++            app.logger.error(f"Reverse geocoding error pentru {lat},{lon}: {e}")
++            entry['address'] = "Eroare la obținerea adresei"
++
++    return jsonify(data)
+
 
 # Ștergere punct
 @app.route('/api/delete/<id>', methods=['POST'])

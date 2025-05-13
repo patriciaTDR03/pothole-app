@@ -1,4 +1,4 @@
-# Colab Detection Server - versiune YOLOv8
+# Colab Detection Server - versiune YOLOv5s
 
 # Instalează dependențele (rulează o dată în Colab)
 !pip install ultralytics flask-ngrok flask pillow piexif requests
@@ -12,11 +12,11 @@ import os
 # Inițializăm aplicația Flask
 app = Flask(__name__)
 
-# Calea către modelul YOLOv8
+# Calea către modelul YOLOv5s
 MODEL_PATH = 'yolov5s.pt'  # asigură-te că fișierul e încărcat în Colab
 
 # Încarcă modelul YOLOv8
-print("📦 Încărcare model YOLOv8...")
+print("📦 Încărcare model YOLOv5s...")
 try:
     model = YOLO(MODEL_PATH)
     print("✅ Model YOLOv8 încărcat cu succes.")

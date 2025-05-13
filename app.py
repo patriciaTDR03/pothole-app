@@ -48,52 +48,47 @@ def delete_detection(id):
         json.dump(data, f, indent=2)
 
 @app.route('/', methods=['GET', 'POST'])
-def upload():
-    if request.method == 'POST':
-        file = request.files.get('image')
-        if not file:
-            return "Nu ai încărcat nicio imagine.", 400
+     if request.method == 'POST':
+         # … save the file, extract GPS, etc.
 
-        filename = f"{uuid.uuid4().hex}.jpg"
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(filepath)
+         # Trimitere către serverul Colab
+         try:
+-            with open(filepath, 'rb') as img_file:
+-                resp = requests.post(COLAB_URL, files={'image': img_file})
+-                result = resp.json()
++            with open(filepath, 'rb') as img_file:
++                resp = requests.post(COLAB_URL, files={'image': img_file})
++            # --- DEBUG: dump everything we got back:
++            print("🔁 Colab response code:", resp.status_code)
++            print("🔁 Colab raw text   :", resp.text)
++            try:
++                result = resp.json()
++            except Exception:
++                # If parsing fails, show an error
++                print("❌ Could not parse JSON from Colab")
++                return "Eroare la parse-uirea răspunsului de la server.", 500
 
-        lat, lon = get_gps_from_image(filepath)
-        if not is_in_cluj(lat, lon):
-            os.remove(filepath)
-            return render_template('not_in.html'), 400
-
-        # Trimitem fișierul spre serverul Colab
-        try:
-            with open(filepath, 'rb') as img_file:
-                resp = requests.post(COLAB_URL,
-                                     files={'image': img_file},
-                                     timeout=15)
-            if resp.status_code != 200:
-                app.logger.error(f"Colab răspuns {resp.status_code}: {resp.text}")
-                return "❌ Serverul de detecție a răspuns cu eroare.", 502
-
-            result = resp.json()
-            if result.get('status') == 'success' and 'Groapă detectată' in result.get('message', ''):
-                entry = {
-                    'id': uuid.uuid4().hex,
-                    'filename': filename,
-                    'location': {'lat': lat, 'lon': lon},
-                    'status': 'pending'
-                }
-                save_detection(entry)
-                return '✅ Groapă detectată și salvată cu succes.', 200
-            else:
-                # detecție fără groapă sau eroare de logică
-                return result.get('message', 'Nu s-au detectat gropi.'), 200
-
-        except requests.Timeout:
-            app.logger.error("Timeout la cererea către Colab")
-            return "⏰ Timeout la serverul de detecție.", 504
-        except Exception as e:
-            app.logger.error(f"Eroare la cererea către Colab: {e}")
-            return "❌ Eroare internă în comunicarea cu serverul de detecție.", 502
-
+-            if result.get('status') == 'success' and 'Groapă detectată' in result.get('message', ''):
++            # --- DEBUG: show the parsed dict
++            print("🔁 Colab JSON       :", result)
++
++            # decide success by the exact flag, not by substring:
++            if result.get('status') == 'success' and result.get('message') == 'Groapă detectată.':
+                 entry = {
+                     'id': uuid.uuid4().hex,
+                     'filename': filename,
+                     'location': {'lat': lat, 'lon': lon},
+                     'status': 'pending'
+                 }
+                 save_detection(entry)
+                 return '✅ Groapă detectată și salvată cu succes.', 200
+             else:
+-                return result.get('message', 'Eroare la detecție.'), 200
++                # show whatever message the Colab server gave you
++                return result.get('message', 'Eroare la detecție.'), 400
+         except Exception as e:
+             print(f"Eroare la cererea către Colab: {e}")
+             return "Eroare la cererea către serverul Colab.", 500
     return render_template('interfata.html')
 
 @app.route('/admin')

@@ -1,4 +1,4 @@
-# app.py (versiune finală cu debugging Colab)
+# app.py (versiune finală cu debugging Colab și fallback dummy)
 from flask import Flask, render_template, request, jsonify
 from PIL import Image
 import os, uuid, json, piexif, requests
@@ -84,6 +84,7 @@ def upload():
             app.logger.info(f'Colab JSON: {result}')
 
             if result.get('status') == 'success' and result.get('message') == 'Groapă detectată.':
+                # Detecție reală
                 entry = {
                     'id': uuid.uuid4().hex,
                     'filename': filename,
@@ -93,7 +94,15 @@ def upload():
                 save_detection(entry)
                 return '✅ Groapă detectată și salvată cu succes.', 200
             else:
-                return result.get('message', 'Nu s-au detectat gropi.'), 200
+                # Fallback dummy detection
+                entry = {
+                    'id': uuid.uuid4().hex,
+                    'filename': filename,
+                    'location': {'lat': lat, 'lon': lon},
+                    'status': 'dummy'
+                }
+                save_detection(entry)
+                return '⚠️ Nu s-a detectat groapă, dar am adăugat un pin dummy pentru test.', 200
 
         except requests.Timeout:
             app.logger.error('Timeout la cererea către Colab')

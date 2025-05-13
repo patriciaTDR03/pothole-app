@@ -6,7 +6,7 @@ import os, uuid, json, piexif, requests
 app = Flask(__name__)
 UPLOAD_FOLDER = 'static/uploads'
 DATA_FILE = 'data/detections.json'
-COLAB_URL = 'https://e8af-35-247-42-51.ngrok-free.app/detect'
+COLAB_URL = 'https://865b-35-247-42-51.ngrok-free.app/detect'
 
 # Asigurăm directorii și fișierul de date
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)

@@ -1,7 +1,13 @@
 # app.py (versiune finală cu pagină „not detected”)
+from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
 from flask import Flask, render_template, request, jsonify
 from PIL import Image
 import os, uuid, json, piexif, requests
+# după tema app = Flask(__name__)
+geolocator = Nominatim(user_agent="pothole_app")
+# ca să nu blocăm solicitările la Nominatim:
+reverse = RateLimiter(geolocator.reverse, min_delay_seconds=1)
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'static/uploads'
@@ -109,7 +115,22 @@ def upload():
 # Pagina de admin
 @app.route('/admin')
 def admin():
-    return render_template('admin.html')
+    # încărcăm toate detecțiile
+    with open(DATA_FILE) as f:
+        data = json.load(f)
+
+    # pentru fiecare entry, adăugăm câmpul 'address'
+    for entry in data:
+        lat = entry['location']['lat']
+        lon = entry['location']['lon']
+        try:
+            loc = reverse((lat, lon), exactly_one=True)
+            entry['address'] = loc.address if loc else "Adresă necunoscută"
+        except Exception as e:
+            app.logger.error(f"Reverse geocoding error pentru {lat},{lon}: {e}")
+            entry['address'] = "Eroare la obținerea adresei"
+
+    return render_template('admin.html', detections=data)
 
 # API pentru punctele de pe hartă
 @app.route('/api/points')

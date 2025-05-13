@@ -1,4 +1,4 @@
-# app.py (versiune finală cu debugging Colab și fallback dummy)
+# app.py (versiune finală cu pagină „not detected”)
 from flask import Flask, render_template, request, jsonify
 from PIL import Image
 import os, uuid, json, piexif, requests
@@ -50,7 +50,7 @@ def delete_detection(id):
         f.truncate()
         json.dump(data, f, indent=2)
 
-# Ruta principală
+# Ruta principală pentru upload și detecție
 @app.route('/', methods=['GET', 'POST'])
 def upload():
     if request.method == 'POST':
@@ -58,24 +58,23 @@ def upload():
         if not file:
             return 'Nu ai încărcat nicio imagine.', 400
 
+        # Salvăm fișierul
         filename = f"{uuid.uuid4().hex}.jpg"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
+        # Extragem coordonatele EXIF
         lat, lon = get_gps_from_image(filepath)
         if not is_in_cluj(lat, lon):
             os.remove(filepath)
             return render_template('not_in.html'), 400
 
-        # Debug: afișăm date despre imagine
         app.logger.info(f'Primit imagine: {filename} cu lat={lat}, lon={lon}')
 
-        # Apel către Colab
+        # Apel către serverul de detecție (Colab)
         try:
             with open(filepath, 'rb') as img_file:
                 resp = requests.post(COLAB_URL, files={'image': img_file}, timeout=15)
-            app.logger.info(f'Colab status: {resp.status_code}')
-            app.logger.info(f'Colab raw: {resp.text}')
             if resp.status_code != 200:
                 app.logger.error(f'Colab error {resp.status_code}: {resp.text}')
                 return '❌ Serverul de detecție a răspuns cu eroare.', 502
@@ -83,8 +82,8 @@ def upload():
             result = resp.json()
             app.logger.info(f'Colab JSON: {result}')
 
+            # Dacă modelul detectează groapă
             if result.get('status') == 'success' and result.get('message') == 'Groapă detectată.':
-                # Detecție reală
                 entry = {
                     'id': uuid.uuid4().hex,
                     'filename': filename,
@@ -93,16 +92,9 @@ def upload():
                 }
                 save_detection(entry)
                 return '✅ Groapă detectată și salvată cu succes.', 200
-            else:
-                # Fallback dummy detection
-                entry = {
-                    'id': uuid.uuid4().hex,
-                    'filename': filename,
-                    'location': {'lat': lat, 'lon': lon},
-                    'status': 'dummy'
-                }
-                save_detection(entry)
-                return '⚠️ Nu s-a detectat groapă, dar am adăugat un pin dummy pentru test.', 200
+
+            # Dacă nu se detectează groapă → pagină frumoasă de notificare
+            return render_template('not_detected.html'), 200
 
         except requests.Timeout:
             app.logger.error('Timeout la cererea către Colab')
@@ -111,40 +103,21 @@ def upload():
             app.logger.error(f'Eroare la cererea către Colab: {e}')
             return '❌ Eroare internă în comunicarea cu serverul de detecție.', 502
 
-def upload():
--            else:
--                # Fallback dummy detection
--                entry = {
--                    'id': uuid.uuid4().hex,
--                    'filename': filename,
--                    'location': {'lat': lat, 'lon': lon},
--                    'status': 'dummy'
--                }
--                save_detection(entry)
--                return '⚠️ Nu s-a detectat groapă, dar am adăugat un pin dummy pentru test.', 200
-+            else:
-+                # Nu s-a detectat nicio groapă → afișăm pagina de notificare
-+                # (opțional poți păstra și salvarea dummy dacă vrei pin pe hartă)
-+                # entry = {
-+                #     'id': uuid.uuid4().hex,
-+                #     'filename': filename,
-+                #     'location': {'lat': lat, 'lon': lon},
-+                #     'status': 'dummy'
-+                # }
-+                # save_detection(entry)
-+                return render_template('not_detected.html'), 200
+    # GET → afișăm pagina principală cu formularul și harta
+    return render_template('interfata.html')
 
-
-# Admin și API
+# Pagina de admin
 @app.route('/admin')
 def admin():
     return render_template('admin.html')
 
+# API pentru punctele de pe hartă
 @app.route('/api/points')
 def api_points():
     with open(DATA_FILE) as f:
         return jsonify(json.load(f))
 
+# Ștergere punct
 @app.route('/api/delete/<id>', methods=['POST'])
 def delete_point(id):
     delete_detection(id)
